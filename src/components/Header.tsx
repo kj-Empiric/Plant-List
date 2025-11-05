@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { Button } from './ui/button';
-import { Home, Plus, Grid3x3 } from 'lucide-react';
+import { Home, Plus, Grid3x3, BookOpen, Leaf, Heart } from 'lucide-react';
 
 export default function Header() {
   const location = useLocation();
@@ -8,7 +8,10 @@ export default function Header() {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/add-plant', label: 'Add Plant', icon: Plus },
-    { path: '/categories', label: 'Categories', icon: Grid3x3 }
+    { path: '/categories', label: 'Categories', icon: Grid3x3 },
+    { path: '/species', label: 'Species', icon: Leaf },
+    { path: '/wishlist', label: 'Wishlist', icon: Heart },
+    { path: '/essentials', label: 'Essentials', icon: BookOpen }
   ];
 
   return (

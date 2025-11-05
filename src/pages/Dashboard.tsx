@@ -5,9 +5,60 @@ import { Button } from '../components/ui/button';
 import { Plus, Leaf } from 'lucide-react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
+import { useRef } from 'react';
 
 export default function Dashboard() {
-  const { plants } = usePlants();
+  const { plants, replacePlants } = usePlants();
+  const owned = plants.filter(p => (p.status || 'owned') === 'owned');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const exportData = () => {
+    const data = JSON.stringify(plants, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date();
+    const ymd = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    a.href = url;
+    a.download = `plant-care-backup-${ymd}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) throw new Error('Invalid format');
+      // Basic shape validation
+      const cleaned = parsed.map((p: any) => ({
+        id: String(p.id ?? crypto.randomUUID()),
+        name: String(p.name ?? ''),
+        species: p.species ? String(p.species) : undefined,
+        variety: p.variety ? String(p.variety) : undefined,
+        category: String(p.category ?? 'Indoor'),
+        imageUrl: String(p.imageUrl ?? ''),
+        wateringFrequency: String(p.wateringFrequency ?? ''),
+        sunlightRequirement: String(p.sunlightRequirement ?? ''),
+        description: String(p.description ?? ''),
+        dateAdded: String(p.dateAdded ?? new Date().toISOString()),
+        status: p.status === 'wishlist' ? 'wishlist' : 'owned',
+      }));
+      replacePlants(cleaned);
+    } catch (err) {
+      console.error(err);
+      // eslint-disable-next-line no-alert
+      alert('Failed to import. Please select a valid backup JSON file.');
+    } finally {
+      e.target.value = '';
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -23,17 +74,22 @@ export default function Dashboard() {
               Manage and track your beautiful plants
             </p>
           </div>
-          <Link to="/add-plant">
-            <Button size="lg" className="gap-2">
-              <Plus className="w-5 h-5" />
-              Add Plant
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportData}>Export</Button>
+            <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImportFile} />
+            <Button variant="outline" onClick={onImportClick}>Import</Button>
+            <Link to="/add-plant">
+              <Button size="lg" className="gap-2">
+                <Plus className="w-5 h-5" />
+                Add Plant
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <DashboardStats />
 
-        {plants.length === 0 ? (
+        {owned.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -56,7 +112,7 @@ export default function Dashboard() {
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {plants.map((plant) => (
+            {owned.map((plant) => (
               <PlantCard key={plant.id} plant={plant} />
             ))}
           </div>

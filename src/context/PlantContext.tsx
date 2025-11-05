@@ -16,6 +16,7 @@ interface PlantContextType extends PlantState {
   updatePlant: (plant: Plant) => void;
   deletePlant: (id: string) => void;
   getPlantById: (id: string) => Plant | undefined;
+  replacePlants: (plants: Plant[]) => void;
 }
 
 const PlantContext = createContext<PlantContextType | undefined>(undefined);
@@ -80,6 +81,10 @@ export function PlantProvider({ children }: { children: ReactNode }) {
     return state.plants.find((plant) => plant.id === id);
   };
 
+  const replacePlants = (plants: Plant[]) => {
+    dispatch({ type: 'SET_PLANTS', payload: plants });
+  };
+
   return (
     <PlantContext.Provider
       value={{
@@ -88,6 +93,7 @@ export function PlantProvider({ children }: { children: ReactNode }) {
         updatePlant,
         deletePlant,
         getPlantById,
+        replacePlants,
       }}
     >
       {children}

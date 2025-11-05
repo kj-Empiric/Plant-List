@@ -16,20 +16,24 @@ import { PLANT_CATEGORIES, PlantCategory } from '../types/plant';
 import { usePlants } from '../context/PlantContext';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { Checkbox } from './ui/checkbox';
 
 const plantSchema = z.object({
   name: z.string().min(1, 'Plant name is required'),
+  species: z.string().min(1, 'Species/common name is required'),
+  variety: z.string().optional(),
   category: z.string().min(1, 'Category is required'),
   imageUrl: z.string().url('Must be a valid URL'),
   wateringFrequency: z.string().min(1, 'Watering frequency is required'),
   sunlightRequirement: z.string().min(1, 'Sunlight requirement is required'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
+  owned: z.boolean().default(true),
 });
 
 type PlantFormData = z.infer<typeof plantSchema>;
 
 export default function AddPlantForm() {
-  const { addPlant } = usePlants();
+  const { addPlant, plants, updatePlant } = usePlants();
   const navigate = useNavigate();
 
   const {
@@ -45,15 +49,31 @@ export default function AddPlantForm() {
   const selectedCategory = watch('category');
 
   const onSubmit = (data: PlantFormData) => {
+    const speciesKey = (data.species || data.name).trim().toLowerCase();
+    const varietyKey = (data.variety || '').trim().toLowerCase();
+    const duplicate = plants.find(p => ((p.species || p.name).trim().toLowerCase() === speciesKey) && ((p.variety || '').trim().toLowerCase() === varietyKey));
+
+    if (duplicate) {
+      if (duplicate.status === 'wishlist' && data.owned) {
+        updatePlant({ ...duplicate, status: 'owned' });
+        toast.success('Moved from Wishlist to Owned');
+        return navigate('/');
+      }
+      toast.error('This plant/variety is already in your collection.');
+      return;
+    }
     const newPlant = {
       id: crypto.randomUUID(),
       name: data.name,
+      species: data.species,
+      variety: data.variety,
       category: data.category as PlantCategory,
       imageUrl: data.imageUrl,
       wateringFrequency: data.wateringFrequency,
       sunlightRequirement: data.sunlightRequirement,
       description: data.description,
       dateAdded: new Date().toISOString(),
+      status: data.owned ? 'owned' : 'wishlist',
     };
 
     addPlant(newPlant);
@@ -73,6 +93,28 @@ export default function AddPlantForm() {
         {errors.name && (
           <p className="text-sm text-destructive">{errors.name.message}</p>
         )}
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="species">Species / Common Name</Label>
+          <Input
+            id="species"
+            placeholder="e.g., Money Plant (Pothos), Aglaonema"
+            {...register('species')}
+          />
+          {errors.species && (
+            <p className="text-sm text-destructive">{errors.species.message}</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="variety">Variety (optional)</Label>
+          <Input
+            id="variety"
+            placeholder="e.g., Marble Queen, Neon, Silver Bay"
+            {...register('variety')}
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -151,6 +193,14 @@ export default function AddPlantForm() {
             {errors.description.message}
           </p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Checkbox id="owned" checked={!!watch('owned')} onCheckedChange={(v) => setValue('owned', Boolean(v))} />
+          <Label htmlFor="owned">I already own this plant</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">Uncheck to add it to your Wishlist.</p>
       </div>
 
       <div className="flex gap-4">
